@@ -80,4 +80,27 @@ describe("DEX integration math", () => {
     expect(program?.programId).toBe("ecosystem-bootstrap");
     expect(program?.rewardPerDayRaw).toBe(250000000n);
   });
+
+  it("returns null for malformed liquidity mining proposal payloads", () => {
+    const program = parseLiquidityMiningProgramProposal(
+      "liquidity_mining_program:broken",
+      "{not-valid-json",
+      7
+    );
+
+    expect(program).toBeNull();
+  });
+
+  it("normalizes native reward assets in liquidity mining proposals", () => {
+    const program = parseLiquidityMiningProgramProposal(
+      "liquidity_mining_program:native-rewards",
+      JSON.stringify({
+        rewardAsset: "xlm",
+      }),
+      9
+    );
+
+    expect(program).not.toBeNull();
+    expect(program?.rewardAsset).toBe("XLM");
+  });
 });

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import {
+  Account,
   rpc,
   Contract,
   TransactionBuilder,
@@ -16,6 +17,8 @@ import {
   callUpdateLiquidationThreshold,
 } from "../staking-engine/contractClient.js";
 import { DexIntegrationService } from "../dex-integration/service.js";
+
+const READ_ONLY_SIMULATION_ACCOUNT = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 
 export interface SyncedGovernanceProposal {
   id: number;
@@ -66,7 +69,7 @@ async function ensureGovernanceColumns(prisma: PrismaClient): Promise<void> {
 
 async function queryGovernanceView(method: string, args: any[]) {
   const op = governanceContract.call(method, ...args);
-  const account = await server.getAccount(config.admin.publicKey);
+  const account = getReadOnlySimulationAccount();
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: config.stellar.networkPassphrase,
@@ -80,6 +83,14 @@ async function queryGovernanceView(method: string, args: any[]) {
     return scValToNative(simResult.result.retval);
   }
   return null;
+}
+
+function getReadOnlySimulationAccount(): Account {
+  try {
+    return new Account(config.admin.publicKey, "0");
+  } catch {
+    return new Account(READ_ONLY_SIMULATION_ACCOUNT, "0");
+  }
 }
 
 export async function applyGovernanceParam(

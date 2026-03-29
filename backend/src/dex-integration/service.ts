@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import {
+  Account,
   Address,
   BASE_FEE,
   Contract,
@@ -27,6 +28,8 @@ import {
   quoteExactIn,
   rawAmountToDisplay,
 } from "./index.js";
+
+const READ_ONLY_SIMULATION_ACCOUNT = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 
 type OracleRow = {
   observed_at: Date | string;
@@ -96,6 +99,7 @@ export class DexIntegrationService {
       clearInterval(this.refreshHandle);
       this.refreshHandle = null;
     }
+    this.initialized = false;
   }
 
   async getCurrentPoolSnapshot(): Promise<PoolSnapshot> {
@@ -115,9 +119,7 @@ export class DexIntegrationService {
 
   async getOracleSnapshot(windowSeconds = 900): Promise<OracleSnapshot> {
     const snapshot = await this.getCurrentPoolSnapshot();
-    await this.recordObservation(snapshot);
-    const observations = await this.loadOracleObservations(windowSeconds, snapshot.observedAt);
-    return computeTwapPrice(observations, windowSeconds, snapshot.observedAt);
+    return this.buildOracleSnapshot(windowSeconds, snapshot);
   }
 
   async getQuote(params: {
@@ -170,11 +172,11 @@ export class DexIntegrationService {
       rewardsEnabled: boolean;
     }>;
   }> {
-    const [snapshot, oracle, programs] = await Promise.all([
+    const [snapshot, programs] = await Promise.all([
       this.getCurrentPoolSnapshot(),
-      this.getOracleSnapshot(900),
       this.getLiquidityMiningPrograms(),
     ]);
+    const oracle = await this.buildOracleSnapshot(900, snapshot);
 
     const rewardsEnabled = programs.some((program) => program.status === "active");
 
@@ -257,14 +259,7 @@ export class DexIntegrationService {
   }> {
     const [snapshot, liveLpBalance, programs] = await Promise.all([
       this.getCurrentPoolSnapshot(),
-      this.queryContractView("get_lp_balance", [new Address(wallet).toScVal()]).catch(async () => {
-        const fallback = await this.prisma.lPPosition.findFirst({
-          where: { wallet },
-          orderBy: { updatedAt: "desc" },
-          select: { lpTokens: true },
-        });
-        return fallback?.lpTokens ?? 0n;
-      }),
+      this.loadLiveLpBalance(wallet),
       this.getLiquidityMiningPrograms(),
     ]);
 
@@ -361,7 +356,7 @@ export class DexIntegrationService {
       program.minLpTokensRaw.toString(),
       program.totalRewardsRaw?.toString() ?? null,
       program.distributedRewardsRaw?.toString() ?? "0",
-      proposalId + 1,
+      proposalId,
       JSON.stringify(program.dexes),
       JSON.stringify(program.metadata)
     );
@@ -371,7 +366,7 @@ export class DexIntegrationService {
 
   private async queryContractView(method: string, args: any[]): Promise<any> {
     const op = this.lpContract.call(method, ...args);
-    const account = await this.server.getAccount(config.admin.publicKey);
+    const account = this.getReadOnlySimulationAccount();
     const tx = new TransactionBuilder(account, {
       fee: BASE_FEE,
       networkPassphrase: config.stellar.networkPassphrase,
@@ -394,6 +389,15 @@ export class DexIntegrationService {
     } catch (error) {
       console.warn("[DEX] Failed to refresh oracle observation:", error);
     }
+  }
+
+  private async buildOracleSnapshot(
+    windowSeconds: number,
+    snapshot: PoolSnapshot
+  ): Promise<OracleSnapshot> {
+    await this.recordObservation(snapshot);
+    const observations = await this.loadOracleObservations(windowSeconds, snapshot);
+    return computeTwapPrice(observations, windowSeconds, snapshot.observedAt);
   }
 
   private async recordObservation(snapshot: PoolSnapshot): Promise<void> {
@@ -440,7 +444,7 @@ export class DexIntegrationService {
 
   private async loadOracleObservations(
     windowSeconds: number,
-    now: Date
+    snapshot: PoolSnapshot
   ): Promise<OracleObservation[]> {
     const rows = await this.prisma.$queryRawUnsafe<OracleRow[]>(
       `
@@ -456,7 +460,7 @@ export class DexIntegrationService {
            )
         ORDER BY observed_at ASC
       `,
-      now.toISOString(),
+      snapshot.observedAt.toISOString(),
       windowSeconds
     );
 
@@ -465,11 +469,18 @@ export class DexIntegrationService {
       spotPrice: Number(row.spot_price),
     }));
 
-    const currentSnapshot = await this.getCurrentPoolSnapshot();
-    observations.push({
-      observedAt: currentSnapshot.observedAt,
-      spotPrice: computeSpotPrice(currentSnapshot),
-    });
+    const currentObservation = {
+      observedAt: snapshot.observedAt,
+      spotPrice: computeSpotPrice(snapshot),
+    };
+    const latestObservation = observations[observations.length - 1];
+    if (
+      !latestObservation ||
+      latestObservation.observedAt.getTime() !== currentObservation.observedAt.getTime() ||
+      latestObservation.spotPrice !== currentObservation.spotPrice
+    ) {
+      observations.push(currentObservation);
+    }
 
     return observations;
   }
@@ -487,10 +498,43 @@ export class DexIntegrationService {
 
     for (const proposal of executedProposals) {
       await this.applyLiquidityMiningProposal(
-        proposal.id - 1,
+        proposal.chainProposalId ?? proposal.id,
         proposal.paramKey,
         proposal.newValue
       );
+    }
+  }
+
+  private getReadOnlySimulationAccount(): Account {
+    try {
+      return new Account(config.admin.publicKey, "0");
+    } catch {
+      return new Account(READ_ONLY_SIMULATION_ACCOUNT, "0");
+    }
+  }
+
+  private async loadLiveLpBalance(wallet: string): Promise<bigint> {
+    const fallback = async () => {
+      const cachedPosition = await this.prisma.lPPosition.findFirst({
+        where: { wallet },
+        orderBy: { updatedAt: "desc" },
+        select: { lpTokens: true },
+      });
+      return cachedPosition?.lpTokens ?? 0n;
+    };
+
+    let walletAddress: Address;
+    try {
+      walletAddress = new Address(wallet);
+    } catch {
+      return fallback();
+    }
+
+    try {
+      const liveLpBalance = await this.queryContractView("get_lp_balance", [walletAddress.toScVal()]);
+      return asBigInt(liveLpBalance ?? 0);
+    } catch {
+      return fallback();
     }
   }
 

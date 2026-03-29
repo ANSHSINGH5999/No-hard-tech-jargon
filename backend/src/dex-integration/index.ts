@@ -1,3 +1,5 @@
+import { Asset } from "@stellar/stellar-sdk";
+
 export const STROOPS_PER_XLM = 10_000_000;
 export const DEFAULT_SWAP_FEE_BPS = 30;
 
@@ -306,6 +308,17 @@ function normalizeBigIntField(
   return fallback;
 }
 
+function normalizeRewardAsset(value: unknown): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return "sXLM";
+  }
+
+  const normalized = value.trim();
+  return normalized.toUpperCase() === Asset.native().getCode()
+    ? Asset.native().getCode()
+    : normalized;
+}
+
 export function parseLiquidityMiningProgramProposal(
   paramKey: string,
   newValue: string,
@@ -315,7 +328,12 @@ export function parseLiquidityMiningProgramProposal(
     return null;
   }
 
-  const parsed = JSON.parse(newValue) as Record<string, unknown>;
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(newValue) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
   const suffix = paramKey.split(":")[1];
   const programId =
     typeof parsed.programId === "string" && parsed.programId.length > 0
@@ -344,10 +362,7 @@ export function parseLiquidityMiningProgramProposal(
     programId,
     title,
     status: parseProgramStatus(parsed.status),
-    rewardAsset:
-      typeof parsed.rewardAsset === "string" && parsed.rewardAsset.length > 0
-        ? parsed.rewardAsset
-        : "sXLM",
+    rewardAsset: normalizeRewardAsset(parsed.rewardAsset),
     rewardPerDayRaw: normalizeBigIntField(parsed, "rewardPerDayRaw", 0n),
     startAt,
     endAt,
