@@ -1,5 +1,6 @@
 export const STROOPS_PER_XLM = 10_000_000;
 export const DEFAULT_SWAP_FEE_BPS = 30;
+export const PRICE_PRECISION = 1000000000000000000n;
 function toRaw(amount) {
     return BigInt(Math.floor(amount * STROOPS_PER_XLM));
 }

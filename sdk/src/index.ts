@@ -1,5 +1,6 @@
 export const STROOPS_PER_XLM = 10_000_000;
 export const DEFAULT_SWAP_FEE_BPS = 30;
+export const PRICE_PRECISION = 1_000_000_000_000_000_000n;
 
 export type TokenSymbol = "XLM" | "sXLM";
 
@@ -7,6 +8,12 @@ export interface PoolState {
   reserveXlm: number;
   reserveSxlm: number;
   feeBps?: number;
+}
+
+export interface OracleState {
+  priceCumulativeXlm: bigint;
+  priceCumulativeSxlm: bigint;
+  timestampLast: number;
 }
 
 export interface QuoteRequest {
@@ -25,6 +32,12 @@ export interface QuoteResponse {
   spotPrice: number;
   priceImpactBps: number;
   route: "sxlm-xlm-direct";
+}
+
+export interface TwapResponse {
+  twapXlmPerSxlm: number;
+  twapSxlmPerXlm: number;
+  elapsedSeconds: number;
 }
 
 function toRaw(amount: number): bigint {
