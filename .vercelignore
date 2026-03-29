@@ -1,0 +1,7 @@
+backend/
+contracts/
+sdk/
+evm/
+docs/
+**/node_modules/
+**/.env
