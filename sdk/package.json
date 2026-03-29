@@ -1,0 +1,17 @@
+{
+  "name": "@stello/dex-sdk",
+  "version": "0.1.0",
+  "description": "Public SDK for integrating the sXLM/XLM pool into third-party Stellar DEXes",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
