@@ -1,18 +1,18 @@
 export const NETWORK = {
-  name: import.meta.env.VITE_NETWORK_NAME || 'MAINNET',
-  networkPassphrase: import.meta.env.VITE_NETWORK_PASSPHRASE || 'Public Global Stellar Network ; September 2015',
-  horizonUrl: import.meta.env.VITE_HORIZON_URL || 'https://horizon.stellar.org',
-  sorobanRpcUrl: import.meta.env.VITE_SOROBAN_RPC_URL || 'https://mainnet.sorobanrpc.com',
-  friendbotUrl: '',
+  name: import.meta.env.VITE_NETWORK_NAME || 'TESTNET',
+  networkPassphrase: import.meta.env.VITE_NETWORK_PASSPHRASE || 'Test SDF Network ; September 2015',
+  horizonUrl: import.meta.env.VITE_HORIZON_URL || 'https://horizon-testnet.stellar.org',
+  sorobanRpcUrl: import.meta.env.VITE_SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org',
+  friendbotUrl: 'https://friendbot.stellar.org',
 } as const;
 
 export const CONTRACTS = {
-  // Deployed to mainnet ✅
-  sxlmToken: import.meta.env.VITE_SXLM_TOKEN_CONTRACT_ID || 'CCGFHMW3NZD5Z7ATHYHZSEG6ABCJADUHP5HIAWFPR37CP4VGNEDQO7FJ',
-  staking: import.meta.env.VITE_STAKING_CONTRACT_ID || 'CDYXKWVDGEVA6OSIGN7GRAPPRN6AKID35OJL5ZZQIBCMECZ35KGL45PS',
-  lending: import.meta.env.VITE_LENDING_CONTRACT_ID || 'CAOWXZ6BWA2ZYY7GHD75OFKADKUJS4WCKPDYGGXULQWFJRB55TXAQNJG',
-  lpPool: import.meta.env.VITE_LP_POOL_CONTRACT_ID || 'CAW2DRMOI3CCJWKVMEUWYJUEQHXB4S4DR72HNL2DWQCMQQUH3LFFVLHV',
-  governance: import.meta.env.VITE_GOVERNANCE_CONTRACT_ID || 'CB7LV3FBQ7US26GVC7SM7RMX22IEEHAEUL7V3TDDWM32DHA5TDFDDEP4',
+  // Redeployed to testnet ✅ 2026-03-29
+  sxlmToken:  import.meta.env.VITE_SXLM_TOKEN_CONTRACT_ID || 'CDY6NCE2ETTCB5C7MISY34E6O23IHSO7WJAKVWFZ466GGMIEERSNGFO4',
+  staking:    import.meta.env.VITE_STAKING_CONTRACT_ID    || 'CDKAF62SP27TBHMSTIWEHBCO3YDQCC6VSVNDEOECCLAA64DQNRN5UXNU',
+  lending:    import.meta.env.VITE_LENDING_CONTRACT_ID    || 'CALSZHYYBZJYU6G5E7ATCXNX677WSKF72EOLUFLKGPF2DI5PFYXTOVCU',
+  lpPool:     import.meta.env.VITE_LP_POOL_CONTRACT_ID    || 'CAUTHT6HQN2DFDIY4DGQNBQ3BD4ZRNUU5SNLRCJ6CBIVGWXANUP7URVC',
+  governance: import.meta.env.VITE_GOVERNANCE_CONTRACT_ID || 'CD3FIVCAROAK4OFD4KWQYGXIOU3QPBGCFCJTMG2O7ZLN36O426LBCANX',
 } as const;
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001' : '');
