@@ -6,8 +6,8 @@
 import axios, { type AxiosInstance } from 'axios';
 import { API_BASE_URL } from '../config/contracts';
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 2_000;
+const MAX_RETRIES = 1;
+const RETRY_DELAY_MS = 1_000;
 
 function isNetworkError(err: unknown): boolean {
   if (!axios.isAxiosError(err)) return false;
@@ -16,7 +16,7 @@ function isNetworkError(err: unknown): boolean {
 
 const instance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60_000, // 60s — submit route polls Stellar testnet for tx confirmation
+  timeout: 8_000,
 });
 
 instance.interceptors.response.use(
